@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BizAI Sign In</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    :root { --bg:#0f1419; --surface:#1a222d; --border:#2d3a4a; --text:#e8edf4; --muted:#8b9cb3; --error:#f07178; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; background:var(--bg); color:var(--text); font-family:system-ui,sans-serif; }
+    .shell { width:min(460px, 92vw); }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:28px; }
+    .title { font-size:2rem; margin:0 0 8px; }
+    .subtitle { color:var(--muted); margin:0 0 14px; line-height:1.5; }
+    .heading { margin:0; }
+    .label { font-size:12px; color:var(--muted); margin:12px 0 6px; }
+    input, button { width:100%; border-radius:10px; border:1px solid var(--border); padding:12px 14px; font:inherit; }
+    input { background:#10161d; color:var(--text); }
+    button { cursor:pointer; background:#2c3c4d; color:var(--text); }
+    .row { display:flex; gap:10px; margin-top:14px; }
+    .status { min-height:20px; margin-top:12px; color:var(--muted); font-size:14px; }
+    .error { color:var(--error); }
+    .hint { color:var(--muted); font-size:13px; margin-top:10px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function AuthApp() {
+      const [email, setEmail] = useState("");
+      const [password, setPassword] = useState("");
+      const [status, setStatus] = useState("");
+      const [isError, setIsError] = useState(false);
+
+      useEffect(() => {
+        if (localStorage.getItem("bizai_token")) {
+          window.location.href = "/chat";
+        }
+      }, []);
+
+      async function authenticate(path, label) {
+        try {
+          setStatus(label);
+          setIsError(false);
+          const res = await fetch(path, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: email.trim(), password })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.detail || "Authentication failed");
+          localStorage.setItem("bizai_token", data.access_token || "");
+          localStorage.setItem("bizai_email", data.email || email.trim());
+          localStorage.setItem("bizai_session", "");
+          window.location.href = "/chat";
+        } catch (err) {
+          setStatus(err.message || String(err));
+          setIsError(true);
+        }
+      }
+
+      return (
+        <div className="shell">
+          <section className="card">
+            <h1 className="title">BizAI Enterprise</h1>
+            <p className="subtitle">Sign in or create an account to continue.</p>
+            <h2 className="heading">Sign in or create account</h2>
+            <div className="label">Email</div>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@company.com" />
+            <div className="label">Password</div>
+            <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="Minimum 8 characters" />
+            <div className="row">
+              <button type="button" onClick={() => authenticate("/api/auth/signup", "Creating account...")}>Sign up</button>
+              <button type="button" onClick={() => authenticate("/api/auth/signin", "Signing in...")}>Sign in</button>
+            </div>
+            <div className={"status" + (isError ? " error" : "")}>{status}</div>
+            <div className="hint">Google sign-in can be added next after the main auth flow is in place.</div>
+          </section>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<AuthApp />);
+  </script>
+</body>
+</html>

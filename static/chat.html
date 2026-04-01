@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BizAI Chat</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    :root { --bg:#0f1419; --surface:#1a222d; --border:#2d3a4a; --text:#e8edf4; --muted:#8b9cb3; --accent:#e8a54b; --error:#f07178; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); }
+    .wrap { max-width:1100px; margin:0 auto; padding:20px; }
+    .top { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:18px; }
+    .grid { display:grid; grid-template-columns:320px 1fr; gap:16px; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    h1,h3 { margin:0 0 10px; }
+    input, textarea, button { width:100%; border-radius:8px; border:1px solid var(--border); background:#10161d; color:var(--text); padding:10px; font:inherit; }
+    textarea { min-height:90px; }
+    button { cursor:pointer; background:#2a3948; }
+    .row { display:flex; gap:8px; }
+    .row > * { flex:1; }
+    .log { min-height:360px; max-height:60vh; overflow:auto; padding:14px; border:1px solid var(--border); border-radius:10px; display:flex; flex-direction:column; gap:10px; }
+    .msg { display:flex; width:100%; }
+    .msg.user { justify-content:flex-end; }
+    .msg.assistant { justify-content:flex-start; }
+    .bubble { max-width:min(78%, 720px); padding:12px 14px; border-radius:14px; white-space:pre-wrap; line-height:1.5; }
+    .msg.user .bubble { background:#2a3948; color:var(--text); border:1px solid #3c5065; border-bottom-right-radius:6px; }
+    .msg.assistant .bubble { background:#111821; color:var(--text); border:1px solid var(--border); border-bottom-left-radius:6px; }
+    .msg.loading .bubble { color:var(--muted); font-style:italic; }
+    .small { color:var(--muted); font-size:12px; }
+    .err { color:var(--error); }
+    @media (max-width: 900px) { .grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useEffect, useMemo, useRef, useState } = React;
+
+    function ChatApp() {
+      const [token, setToken] = useState(localStorage.getItem("bizai_token") || "");
+      const [email, setEmail] = useState(localStorage.getItem("bizai_email") || "");
+      const [sessionId, setSessionId] = useState(localStorage.getItem("bizai_session") || "");
+      const [messages, setMessages] = useState([]);
+      const [status, setStatus] = useState("");
+      const [error, setError] = useState(false);
+      const [message, setMessage] = useState("");
+      const [loading, setLoading] = useState(false);
+      const [webSearch, setWebSearch] = useState(false);
+      const [file, setFile] = useState(null);
+      const logRef = useRef(null);
+
+      useEffect(() => {
+        if (!token) {
+          window.location.href = "/auth";
+        }
+      }, [token]);
+
+      useEffect(() => {
+        localStorage.setItem("bizai_token", token || "");
+        localStorage.setItem("bizai_email", email || "");
+        localStorage.setItem("bizai_session", sessionId || "");
+      }, [token, email, sessionId]);
+
+      useEffect(() => {
+        if (logRef.current) {
+          logRef.current.scrollTop = logRef.current.scrollHeight;
+        }
+      }, [messages, loading]);
+
+      const authHeaders = useMemo(() => ({
+        Authorization: `Bearer ${token}`
+      }), [token]);
+
+      function setStatusState(text, isErr = false) {
+        setStatus(text);
+        setError(isErr);
+      }
+
+      function logout() {
+        localStorage.removeItem("bizai_token");
+        localStorage.removeItem("bizai_email");
+        localStorage.removeItem("bizai_session");
+        window.location.href = "/auth";
+      }
+
+      async function newChat() {
+        try {
+          const res = await fetch("/api/chat/new", { method: "POST", headers: authHeaders });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.detail || "Could not create chat");
+          setSessionId(data.session_id || "");
+          setMessages([{ role: "assistant", text: "New chat created. Memory is empty." }]);
+          setStatusState("New chat started.");
+        } catch (err) {
+          setStatusState(err.message || String(err), true);
+        }
+      }
+
+      async function clearChat() {
+        if (!sessionId) return setStatusState("No active chat session", true);
+        try {
+          const res = await fetch(`/api/chat/${sessionId}/clear`, { method: "POST", headers: authHeaders });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.detail || "Clear failed");
+          setMessages([{ role: "assistant", text: "I cleared this chat memory." }]);
+          setStatusState("Chat memory cleared.");
+        } catch (err) {
+          setStatusState(err.message || String(err), true);
+        }
+      }
+
+      async function uploadKnowledge() {
+        if (!file) return setStatusState("Choose a file first", true);
+        try {
+          const form = new FormData();
+          form.append("file", file);
+          const res = await fetch("/api/knowledge/upload", { method: "POST", headers: authHeaders, body: form });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.detail || "Upload failed");
+          setStatusState(`Uploaded ${data.filename}. Added ${data.chunks_added} chunks. Total docs: ${data.documents_total}.`);
+        } catch (err) {
+          setStatusState(err.message || String(err), true);
+        }
+      }
+
+      async function wipeKnowledge() {
+        try {
+          const res = await fetch("/api/knowledge", { method: "DELETE", headers: authHeaders });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.detail || "Delete KB failed");
+          setStatusState("Knowledge base deleted.");
+        } catch (err) {
+          setStatusState(err.message || String(err), true);
+        }
+      }
+
+      async function sendMessage(event) {
+        event.preventDefault();
+        const trimmed = message.trim();
+        if (!trimmed || loading) return;
+        setMessages((prev) => [...prev, { role: "user", text: trimmed }]);
+        setMessage("");
+        setLoading(true);
+        try {
+          const payload = { message: trimmed, enable_web_search: webSearch };
+          if (sessionId) payload.session_id = sessionId;
+          const res = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authHeaders },
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.detail || "Chat failed");
+          setSessionId(data.session_id || "");
+          setMessages((prev) => [...prev, { role: "assistant", text: data.reply || "" }]);
+          setStatusState(data.session_id ? `Session: ${data.session_id}` : "");
+        } catch (err) {
+          const text = `Error: ${err.message || String(err)}`;
+          setMessages((prev) => [...prev, { role: "assistant", text }]);
+          setStatusState(err.message || String(err), true);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      return (
+        <div className="wrap">
+          <div className="top">
+            <div><h1>BizAI Chat</h1></div>
+            <div style={{ textAlign: "right", minWidth: "220px" }}>
+              <div className="small">{email ? `Signed in as ${email}` : "Signed in"}</div>
+              <button onClick={logout} type="button" style={{ marginTop: "8px" }}>Log out</button>
+            </div>
+          </div>
+
+          <div className="grid">
+            <div className="card">
+              <h3>Knowledge Base</h3>
+              <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+              <div className="row" style={{ marginTop: "8px" }}>
+                <button type="button" onClick={uploadKnowledge}>Upload</button>
+                <button type="button" onClick={wipeKnowledge}>Delete KB</button>
+              </div>
+
+              <h3 style={{ marginTop: "14px" }}>Session</h3>
+              <div className="row">
+                <button type="button" onClick={newChat}>New chat</button>
+                <button type="button" onClick={clearChat}>Clear memory</button>
+              </div>
+              <label className="small" style={{ display: "block", marginTop: "10px" }}>
+                <input type="checkbox" checked={webSearch} onChange={(e) => setWebSearch(e.target.checked)} /> Enable web search for this message
+              </label>
+              <p className={"small" + (error ? " err" : "")}>{status}</p>
+            </div>
+
+            <div className="card">
+              <div ref={logRef} className="log">
+                {messages.length === 0 && !loading && <p className="small">Start a new chat and ask about policies, strategy, or internal docs.</p>}
+                {messages.map((msg, idx) => (
+                  <div key={idx} className={`msg ${msg.role}`}>
+                    <div className="bubble">{msg.text}</div>
+                  </div>
+                ))}
+                {loading && (
+                  <div className="msg assistant loading">
+                    <div className="bubble">Generating response...</div>
+                  </div>
+                )}
+              </div>
+              <form onSubmit={sendMessage} style={{ marginTop: "10px" }}>
+                <textarea value={message} onChange={(e) => setMessage(e.target.value)} disabled={loading} placeholder="Ask about internal policy, strategy, or ask to draft/send an email..." />
+                <button style={{ marginTop: "8px" }} type="submit" disabled={loading}>Send</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<ChatApp />);
+  </script>
+</body>
+</html>

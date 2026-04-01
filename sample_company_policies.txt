@@ -1,0 +1,53 @@
+BizAI Demo Company Policies
+
+1. Leave Policy
+- Full-time employees receive 18 days of annual paid leave per calendar year.
+- Casual leave is limited to 6 days per year.
+- Sick leave is limited to 10 days per year.
+- Any leave longer than 3 consecutive working days requires manager approval.
+- Carry-forward of annual leave is capped at 5 days into the next year.
+
+2. Work From Home Policy
+- Employees may work from home up to 3 days per week with manager approval.
+- Staff handling confidential finance, payroll, or legal operations must use company-issued laptops only.
+- Public Wi-Fi may not be used for company systems unless connected through company VPN.
+
+3. Expense Reimbursement Policy
+- Meals during approved business travel are reimbursable up to $40 per day.
+- Hotel stays are reimbursable up to $140 per night unless pre-approved by Finance.
+- Taxi and rideshare claims require receipts for any single trip above $15.
+- Reimbursement claims must be submitted within 21 days of the expense date.
+
+4. Procurement Policy
+- Purchases under $500 may be approved by a department manager.
+- Purchases between $500 and $2,500 require both manager and Finance approval.
+- Purchases above $2,500 require Procurement review and one executive approver.
+- Any software subscription handling customer data must be reviewed by Security before purchase.
+
+5. Information Security Policy
+- Passwords must be at least 12 characters long.
+- Multi-factor authentication is mandatory for all staff accounts.
+- Customer data may not be downloaded to personal devices.
+- Suspected phishing must be reported to security@demo-bizai.local within 1 hour.
+
+6. Travel Policy
+- International travel requires approval from the department head at least 7 business days in advance.
+- Economy class is required for flights shorter than 6 hours.
+- Business class may be booked only for flights longer than 6 hours with executive approval.
+
+7. Performance Review Policy
+- Formal performance reviews occur twice per year in June and December.
+- Managers must submit review summaries within 5 business days of the review meeting.
+
+8. Vendor Management Policy
+- New vendors must sign the standard data processing agreement if they process customer or employee data.
+- Critical vendors must be reviewed annually by Legal and Security.
+
+9. Hiring Policy
+- Open roles must have an approved job description and salary band before posting.
+- At least two interviewers must independently score final-round candidates.
+
+10. Escalation Contacts
+- HR questions: hr@demo-bizai.local
+- Finance reimbursement questions: finance@demo-bizai.local
+- Security incidents: security@demo-bizai.local

@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: bizai_db
+    restart: always
+    environment:
+      POSTGRES_USER: 'Havi12sri12@'
+      POSTGRES_PASSWORD: 'Havi12sri12@'
+      POSTGRES_DB: bizai
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  app:
+    build: .
+    container_name: bizai_app
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      # Database string using the configured user/password
+      DATABASE_URL: 'postgresql+psycopg://Havi12sri12@:Havi12sri12@@db:5432/bizai'
+      APP_BASE_URL: 'http://localhost:8000'
+      # ADD YOUR OPENAI/GOOGLE KEYS AS NEEDED BELOW:
+      # OPENAI_API_KEY: 'sk-...'
+      # OPENAI_EMBEDDING_MODEL: 'text-embedding-3-small'
+    depends_on:
+      - db
+    # We mount the local data directory if we want local file persistence (uploads, sqlite fallback)
+    # The application uses ./data/uploads internally for PDF/TXT files before embedding them.
+    volumes:
+      - ./data:/app/data
+
+volumes:
+  postgres_data:
